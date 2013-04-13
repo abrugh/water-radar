@@ -19,8 +19,12 @@ two.
 This all happened in the spring of 2011. I'm not a fisherman and I don't live
 anywhere near my friend who is, so development hasn't happend lately.
 
+## DISCLAIMER ##
+I'm not responsible for any laptops or fishing related equipment that might 
+be damaged if you plug them into each other.
+
 ## Compatibility ##
-* unknown - sorry, it isn't my gear; will update when I know
+* Lowrance compatible with the HDS7 units
 
 ## Features ##
 For this inital commit only the following are available:
@@ -33,6 +37,7 @@ Features I plan on adding:
 * Find other data I think is in the stream
  * Speed, location (may come from gps unit and not in on the wire)
  * Depth data
+* Buttons (that emulate actual head-unit buttons)
 
 ## Dependencies ##
 Neale Pickett over at dirtbags.net wrote a dead-simple pcap reader that I use.
