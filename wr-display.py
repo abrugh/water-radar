@@ -10,7 +10,7 @@ w = 1436  # the packets all have 1436 bytes in them
 h = 768   # This is all the more data we'll buffer
 
 # Initial window size hardcoded to something small/reasonable
-screen = pygame.display.set_mode((640, 480), pygame.RESIZABLE)
+screen = pygame.display.set_mode((640, 480), pygame.RESIZABLE, 24)
 screen.fill((255,255,255))
 clock = pygame.time.Clock()
 
@@ -27,7 +27,7 @@ class View:
     handling
     """
 
-    def __init__(self, height=h, width=w, hand="right"):
+    def __init__(self, height=h, width=w, hand='right'):
         self.surface = pygame.Surface((width, height), 0, 24)
         self.height = height
         self.width = width
@@ -71,9 +71,9 @@ def dump2(src, length=16):
     result=[]
     for i in xrange(0, len(src), length):
        s = src[i:i+length]
-       hexa = ' '.join(["%02X"%ord(x) for x in s])
+       hexa = ' '.join(['%02X'%ord(x) for x in s])
        printable = s.translate(FILTER)
-       result.append("%04X   %-*s   %s\n" % (i, length*3, hexa, printable))
+       result.append('%04X   %-*s   %s\n' % (i, length*3, hexa, printable))
     return ''.join(result)
 
 
@@ -89,7 +89,7 @@ def main(opts, args):
 
     packets = pcap.open(file(infile))
     sensed = 0
-    surfaces = {"left":View(hand='left'), "right":View(), "down":[]}
+    surfaces = {'left':View(hand='left'), 'right':View(), 'down':[]}
     for bs, i in packets:
         pkts -= 1
         ipheader = i[:42]
@@ -103,18 +103,18 @@ def main(opts, args):
         if dataheader[0] == struct.pack('B', 0x21) :
             sensor = None
             if dataheader[1] == struct.pack('B', 0x02):
-                sensor = "down"
+                sensor = 'down'
                 sensed += 1
             elif dataheader[1] == struct.pack('B', 0x03):
-                sensor = "left"
+                sensor = 'left'
                 sensed += 1
             elif dataheader[1] == struct.pack('B', 0x04):
-                sensor = "right"
+                sensor = 'right'
                 sensed += 1
 
             #print dump2(i)
             data = i[4:]
-            if sensor in ["right","left"]:
+            if sensor in ['right', 'left']:
                 surfaces[sensor].new_line(data)
 #            elif sensor == "down":
 #                surfaces[sensor].append(pygame.Surface((1,400)))
@@ -122,11 +122,11 @@ def main(opts, args):
 #                    surfaces[sensor][-1].set_at((0,x),((ord(j),ord(j),ord(j))))
         if sensed > 2:
             sensed = 0
-            surfaces["right"].draw()
+            surfaces['right'].draw()
             #screen.blit(surfaces["right"].surface, (0,0))
             # Scaling data to the window is super expensive (for netbooks)
-            screen.blit(pygame.transform.smoothscale(surfaces["right"].surface,
-                        (screenw, screenh)), (0,0))
+            pygame.transform.smoothscale(surfaces['right'].surface,
+                        (screenw, screenh), screen)
 
 
     #        for sensor in ["left", "right"]:
@@ -160,19 +160,20 @@ def main(opts, args):
                 print "RESIZE"
                 screenw, screenh = event.dict['size']
                 screen = pygame.display.set_mode((screenw, screenh), pygame.RESIZABLE)
-                print screeninfo.current_h, screeninfo.current_w
+                print screeninfo.current_w, screeninfo.current_h
 
-        #clock.tick(60) # commented out cuz my netbook can't keep up as is
+        clock.tick() 
         if pkts == 0:
             return
 
 if __name__ == '__main__':
     parser = optparse.OptionParser()
-    parser.add_option("-c", "--count", default=-1, action="store", type="int",
-                        help="Packets to read from a pcap file before exiting")
+    parser.add_option('-c', '--count', default=-1, action='store', type='int',
+                        help='Packets to read from a pcap file before exiting')
 
     options, arguments = parser.parse_args(sys.argv)
     main(options, arguments)
+    print clock.get_fps()
 
     # vars for debugging in interactive mode
     d = surfaces['right'].data
