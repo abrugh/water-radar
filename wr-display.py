@@ -5,9 +5,11 @@ import pcap
 import pygame
 import struct
 import sys
+from scipy.interpolate import interp1d
 
-w = 1436  # the packets all have 1436 bytes in them
-h = 768   # This is all the more data we'll buffer
+sensor_w = 1436  # the packets all have 1436 bytes in them
+sensor_linspace = numpy.linspace(0, sensor_w, sensor_w)
+sensor_h = 1000 # This is all the more data we'll buffer
 
 # Initial window size hardcoded to something small/reasonable
 screen = pygame.display.set_mode((640, 480), pygame.RESIZABLE, 24)
@@ -20,6 +22,9 @@ def num2gray(n):
     """
     return sum([n << x for x in range(0,24,8)])
 
+def data_init(x, y):
+    return numpy.zeros((x,y), dtype=numpy.int8)
+
 class View:
     """ A class to collect and render data from various sensors
     the hand argument is to deal with the case of the left-side sensor, its
@@ -27,38 +32,68 @@ class View:
     handling
     """
 
-    def __init__(self, height=h, width=w, hand='right'):
-        self.surface = pygame.Surface((width, height), 0, 24)
-        self.height = height
+    def __init__(self, width=640, height=480, hand='right'):
+        self.surface = None
+        self.init_surface(width, height)
         self.width = width
-        self.data = numpy.zeros((width,height), dtype=numpy.int32)
+        self.newscale = numpy.linspace(0, sensor_w, width)
+        self.height = height
+        self.rawdata = data_init(sensor_w, sensor_h)
+        self.viewdata = data_init(width, height)
         filler = num2gray(255)
-        for x in xrange(w):
-            for y in xrange(h):
-                self.data[x,y] = filler
+        for x in xrange(self.width):
+            for y in xrange(self.height):
+                self.viewdata[x,y] = filler
         self.hand = hand
-        self.y = height - 1
-        self.roll = False
+        self.y = self.height - 1
+
+    def init_surface(self, x, y):
+        self.surface = pygame.Surface((x, y), 0, 8)
+        self.surface.set_palette([(c, c, c) for c in range(0,256)])
+
+    def resize(self, x, y):
+        self.init_surface(x, y)
+        self.width = x
+        self.newscale = numpy.linspace(0, sensor_w, x)
+        self.height = y
+        self.viewdata = data_init(x, y)
+        self.rescale()
+
+    def rescale(self):
+        print "self.height=", self.height
+        print "self.width=", self.width
+        print "len(newscale)=", len(self.newscale)
+        print "len(self.viewdata)=", len(self.viewdata)
+        print "self.y=", self.y
+        print "self.viewdata.shape=", self.viewdata.shape
+        #for tmpy, line in enumerate(numpy.roll(self.rawdata.T, self.height-self.y-1, axis=0)[:self.height]):
+        tmpi = 0
+        while tmpi < self.height:
+            #print tmpy
+            #self.viewdata[:,self.height-1-tmpy] = interp1d(sensor_linspace, line)(self.newscale)
+            self.viewdata[:,(self.y+tmpi)%self.height] = interp1d(sensor_linspace, self.rawdata.T[(self.y+tmpi)%self.height])(self.newscale)
+            tmpi += 1
+        self.y = (self.y+tmpi)%self.height
 
     def new_line(self, line):
         """ Puts the newest line of data in the array, updates the y coord """
         for x, point in enumerate(line):
-            self.data[x,self.y] = num2gray(ord(point))
-        self.y = (self.y - 1)
+            self.rawdata[x,self.y] = num2gray(ord(point))
+        self.viewdata[:,self.y%self.height] = interp1d(sensor_linspace, self.rawdata[:,self.y])(self.newscale)
+        self.y = (self.y%self.height) - 1
         if self.y == -1:
             self.y = self.height - 1
-            self.roll = True
 
     def draw(self):
         """Handles the rendering of the surface for this view. Data
-        is scrolled once the buffer is filled by enough calls to new_line
-        and the left-hand sensor is flipped accordingly
+        is scrolled once the buffer is filled by enough calls to new_line.
+        The left-hand sensor is flipped accordingly
         """
 
         # This gives us a constant scroll effect, new data always appears
         # at the top, shifting everything down
         pygame.surfarray.blit_array(self.surface,
-                         numpy.roll(self.data, self.height-self.y-1, axis=1))
+                         numpy.roll(self.viewdata, self.height-self.y-1, axis=1))
         if self.hand == 'left':
             pygame.transform.flip(self.surface, True, False)
         
@@ -123,10 +158,10 @@ def main(opts, args):
         if sensed > 2:
             sensed = 0
             surfaces['right'].draw()
-            #screen.blit(surfaces["right"].surface, (0,0))
+            screen.blit(surfaces["right"].surface, (0,0))
             # Scaling data to the window is super expensive (for netbooks)
-            pygame.transform.smoothscale(surfaces['right'].surface,
-                        (screenw, screenh), screen)
+            #pygame.transform.smoothscale(surfaces['right'].surface,
+            #            (screenw, screenh), screen)
 
 
     #        for sensor in ["left", "right"]:
@@ -160,6 +195,7 @@ def main(opts, args):
                 print "RESIZE"
                 screenw, screenh = event.dict['size']
                 screen = pygame.display.set_mode((screenw, screenh), pygame.RESIZABLE)
+                surfaces["right"].resize(screenw, screenh)
                 print screeninfo.current_w, screeninfo.current_h
 
         clock.tick() 
@@ -174,8 +210,3 @@ if __name__ == '__main__':
     options, arguments = parser.parse_args(sys.argv)
     main(options, arguments)
     print clock.get_fps()
-
-    # vars for debugging in interactive mode
-    d = surfaces['right'].data
-    s = surfaces['right'].surface
-    y = surfaces['right'].y
