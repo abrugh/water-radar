@@ -1,4 +1,3 @@
-import collections
 import numpy
 import optparse
 import pcap
@@ -13,17 +12,17 @@ sensor_h = 1000 # This is all the more data we'll buffer
 
 # Initial window size hardcoded to something small/reasonable
 screen = pygame.display.set_mode((640, 480), pygame.RESIZABLE, 24)
-screen.fill((255,255,255))
+screen.fill((255, 255, 255))
 clock = pygame.time.Clock()
 
 def num2gray(n):
     """Utility function for returning greyscale ints from numbers returned by
     ord when run against single characters 
     """
-    return sum([n << x for x in range(0,24,8)])
+    return sum([n << x for x in range(0, 24, 8)])
 
 def data_init(x, y):
-    return numpy.zeros((x,y), dtype=numpy.int8)
+    return numpy.zeros((x, y), dtype=numpy.int8)
 
 class View:
     """ A class to collect and render data from various sensors
@@ -50,9 +49,10 @@ class View:
 
     def init_surface(self, x, y):
         self.surface = pygame.Surface((x, y), 0, 8)
-        self.surface.set_palette([(c, c, c) for c in range(0,256)])
+        self.surface.set_palette([(c, c, c) for c in range(0, 256)])
 
     def resize(self, x, y):
+        """Resizes the surface and the scaling factor for that surface"""
         self.init_surface(x, y)
         self.width = x
         self.newscale = numpy.linspace(0, sensor_w, x)
@@ -61,14 +61,7 @@ class View:
         self.rescale()
 
     def rescale(self):
-        print "self.height=", self.height
-        print "self.width=", self.width
-        print "len(newscale)=", len(self.newscale)
-        print "len(self.viewdata)=", len(self.viewdata)
-        print "self.viewy=", self.viewy
-        print "self.rawy=", self.rawy
-        print "self.viewdata.shape=", self.viewdata.shape
-        tmpi = 0
+        """Rescales all data lines onto newly resized surface"""
         for tmpi in range(self.height):
             self.viewdata[:,tmpi] = interp1d(sensor_linspace, self.rawdata.T[(self.rawy+tmpi)%sensor_h])(self.newscale)
         
@@ -134,16 +127,16 @@ class DownView(View):
                  numpy.roll(self.viewdata, self.width-self.viewx-1, axis=0))
 
 # printable character mapping for hex dumping
-FILTER=''.join([(len(repr(chr(x)))==3) and chr(x) or '.' for x in range(256)])
+FILTER =''.join([(len(repr(chr(x)))==3) and chr(x) or '.' for x in range(256)])
 
 def dump2(src, length=16):
     """Utility function to print hex dumps"""
     result=[]
     for i in xrange(0, len(src), length):
-       s = src[i:i+length]
-       hexa = ' '.join(['%02X' % ord(x) for x in s])
-       printable = s.translate(FILTER)
-       result.append('%04X   %-*s   %s\n' % (i, length*3, hexa, printable))
+        s = src[i:i+length]
+        hexa = ' '.join(['%02X' % ord(x) for x in s])
+        printable = s.translate(FILTER)
+        result.append('%04X   %-*s   %s\n' % (i, length*3, hexa, printable))
     return ''.join(result)
 
 
@@ -183,14 +176,19 @@ def main(opts, args):
                 sensor = 'right'
                 sensed += 1
 
-            #print dump2(i)
             data = i[4:]
             if sensor in ['right', 'left', 'down']:
                 surfaces[sensor].new_line(data)
+            else:
+                print dump2(i)
+                continue
+        else:
+            continue
+
         if sensed > 2:
             sensed = 0
             inview.draw()
-            screen.blit(inview.surface, (0,0))
+            screen.blit(inview.surface, (0, 0))
             clock.tick() 
             pygame.display.update()
 
@@ -209,7 +207,8 @@ def main(opts, args):
             elif event.type == pygame.VIDEORESIZE:
                 print "RESIZE"
                 screenw, screenh = event.dict['size']
-                screen = pygame.display.set_mode((screenw, screenh), pygame.RESIZABLE)
+                screen = pygame.display.set_mode((screenw, screenh),
+                                                 pygame.RESIZABLE)
                 for surface in surfaces.values():
                     surface.resize(screenw, screenh)
                 print screeninfo.current_w, screeninfo.current_h
