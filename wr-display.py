@@ -182,6 +182,7 @@ def main(opts, args):
     #            for x,i in enumerate(surfaces[sensor][::-1]):
     #                screen.blit(i,(w-x,0))
 
+            clock.tick() 
             pygame.display.update()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -198,7 +199,6 @@ def main(opts, args):
                 surfaces["right"].resize(screenw, screenh)
                 print screeninfo.current_w, screeninfo.current_h
 
-        clock.tick() 
         if pkts == 0:
             return
 
