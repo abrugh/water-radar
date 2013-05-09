@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import numpy
 import optparse
 import pcap
@@ -15,11 +16,19 @@ screen = pygame.display.set_mode((640, 480), pygame.RESIZABLE, 24)
 screen.fill((0, 0, 0))
 clock = pygame.time.Clock()
 
+grays = {}
+
 def num2gray(num):
     """Utility function for returning greyscale ints from numbers returned by
     ord when run against single characters 
     """
-    return sum([num << x for x in range(0, 24, 8)])
+    #return sum([num << x for x in range(0, 24, 8)])
+    return num*(256*256) + num*256 + num
+
+for i in range(256):
+    # calling num2gray and ord a bunch gets expensive, so we do it all once
+    grays[chr(i)] = num2gray(i)
+    grays[i] = num2gray(i)
 
 def data_init(x, y):
     """ Utility function for initalizing data areas """
@@ -43,7 +52,7 @@ class View:
         self.rawy = sensor_h - 1
         self.viewdata = data_init(width, height)
         self.viewy = self.height - 1
-        filler = num2gray(0)
+        filler = grays[0]
         for x in xrange(self.width):
             for y in xrange(self.height):
                 self.viewdata[x,y] = filler
@@ -76,7 +85,7 @@ class View:
         if self.hand == 'left':
             line = line[::-1]
         for x, point in enumerate(line):
-            self.rawdata[x, self.rawy] = num2gray(ord(point))
+            self.rawdata[x, self.rawy] = grays[((point))]
         self.viewdata[:,self.viewy] = interp1d(sensor_linspace,
                                        self.rawdata[:,self.rawy])(self.newscale)
         self.rawy  = (self.rawy  - 1) % sensor_h
@@ -133,7 +142,7 @@ class DownView(View):
         """
 
         for x, point in enumerate(line):
-            self.rawdata[x, self.rawy] = num2gray(ord(point))
+            self.rawdata[x, self.rawy] = grays[((point))]
         self.viewdata[self.viewx,:] = interp1d(sensor_linspace,
                                        self.rawdata[:,self.rawy])(self.newscale)
         self.rawy = (self.rawy - 1) % sensor_h
@@ -260,7 +269,7 @@ def main(opts, args):
             if setviewall:
                 for view in ['left','right']:
                     surfaces[view].resize(screenw/3, screenh)
-                surfaces['down'].resize(screenw/2, screenh)
+                surfaces['down'].resize(screenw/3, screenh)
             if setviewone:
                 for view in ['left', 'right', 'down']:
                     surfaces[view].resize(screenw, screenh)
